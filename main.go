@@ -18,6 +18,7 @@ type Options struct {
 var options Options
 var rootCmd = cobra.Command{
 	RunE: func(cmd *cobra.Command, args []string) error {
+		log.Printf("%+v\n\n", options)
 		dstClient := redis.NewClient(&redis.Options{
 			Addr:     options.DestinationAddress,
 			Password: options.DestinationPassword,
@@ -36,6 +37,7 @@ var rootCmd = cobra.Command{
 		}
 
 		log.Printf("Keys got %d keys\n", len(keys))
+		log.Printf("Keys %+v\n", keys)
 
 		successCount := 0
 
