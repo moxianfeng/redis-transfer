@@ -32,47 +32,56 @@ var rootCmd = cobra.Command{
 			Password: options.SourcePassword,
 		})
 
-		sourceKeys := srcClient.Keys(options.Keys)
-		keys, err := sourceKeys.Result()
-		if err != nil {
+		if err := srcClient.ForEachMaster(func(client *redis.Client) error {
+			sourceKeys := client.Keys(options.Keys)
+			keys, err := sourceKeys.Result()
+			if err != nil {
+				panic(err)
+			}
+
+			nameResult := client.ClientGetName()
+
+			log.Printf("[%s] Keys got %d keys\n", nameResult.Val(), len(keys))
+			log.Printf("[%s]\nKeys %+v\n", nameResult.Val(), keys)
+
+			successCount := 0
+
+			for _, k := range keys {
+				getResult := client.Get(k)
+
+				v, err := getResult.Result()
+
+				if err != nil {
+					if errors.Is(err, redis.Nil) {
+						log.Printf("key `%s` is nil", k)
+						continue
+					} else {
+						panic(err)
+					}
+				}
+
+				ttlResult := client.TTL(k)
+				ttl, err := ttlResult.Result()
+				if err != nil {
+					panic(err)
+				}
+
+				ret := dstClient.Set(k, v, ttl)
+				_, err = ret.Result()
+				if err != nil {
+					panic(err)
+				}
+
+				successCount++
+			}
+
+			log.Printf("Successed count %d\n", successCount)
+
+			return nil
+		}); err != nil {
 			panic(err)
 		}
 
-		log.Printf("Keys got %d keys\n", len(keys))
-		log.Printf("Keys %+v\n", keys)
-
-		successCount := 0
-
-		for _, k := range keys {
-			getResult := srcClient.Get(k)
-
-			v, err := getResult.Result()
-
-			if err != nil {
-				if errors.Is(err, redis.Nil) {
-					log.Printf("key `%s` is nil", k)
-					continue
-				} else {
-					panic(err)
-				}
-			}
-
-			ttlResult := srcClient.TTL(k)
-			ttl, err := ttlResult.Result()
-			if err != nil {
-				panic(err)
-			}
-
-			ret := dstClient.Set(k, v, ttl)
-			_, err = ret.Result()
-			if err != nil {
-				panic(err)
-			}
-
-			successCount++
-		}
-
-		log.Printf("Successed count %d\n", successCount)
 		return nil
 	},
 }
