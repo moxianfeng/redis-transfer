@@ -3,6 +3,7 @@ package main
 import (
 	"errors"
 	"log"
+	"strings"
 
 	"github.com/go-redis/redis"
 	"github.com/spf13/cobra"
@@ -56,7 +57,11 @@ var rootCmd = cobra.Command{
 						log.Printf("key `%s` is nil", k)
 						continue
 					} else {
-						panic(err)
+						if strings.Contains(err.Error(), "MOVED") {
+							continue
+						} else {
+							panic(err)
+						}
 					}
 				}
 
