@@ -33,7 +33,7 @@ var rootCmd = cobra.Command{
 		sourceKeys := srcClient.Keys("*")
 		keys, err := sourceKeys.Result()
 		if err != nil {
-			return err
+			panic(err)
 		}
 
 		log.Printf("Keys got %d keys\n", len(keys))
@@ -45,19 +45,19 @@ var rootCmd = cobra.Command{
 			getResult := srcClient.Get(k)
 			v, err := getResult.Result()
 			if err != nil {
-				return err
+				panic(err)
 			}
 
 			ttlResult := srcClient.TTL(k)
 			ttl, err := ttlResult.Result()
 			if err != nil {
-				return err
+				panic(err)
 			}
 
 			ret := dstClient.Set(k, v, ttl)
 			_, err = ret.Result()
 			if err != nil {
-				return err
+				panic(err)
 			}
 
 			successCount++
