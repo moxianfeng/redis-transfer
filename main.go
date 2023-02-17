@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"log"
 
 	"github.com/go-redis/redis"
@@ -13,6 +14,7 @@ type Options struct {
 	DestinationPassword string
 	DestinationAddress  string
 	DestinationDB       int
+	Keys                string
 }
 
 var options Options
@@ -30,7 +32,7 @@ var rootCmd = cobra.Command{
 			Password: options.SourcePassword,
 		})
 
-		sourceKeys := srcClient.Keys("*")
+		sourceKeys := srcClient.Keys(options.Keys)
 		keys, err := sourceKeys.Result()
 		if err != nil {
 			panic(err)
@@ -43,9 +45,16 @@ var rootCmd = cobra.Command{
 
 		for _, k := range keys {
 			getResult := srcClient.Get(k)
+
 			v, err := getResult.Result()
+
 			if err != nil {
-				panic(err)
+				if errors.Is(err, redis.Nil) {
+					log.Printf("key `%s` is nil", k)
+					continue
+				} else {
+					panic(err)
+				}
 			}
 
 			ttlResult := srcClient.TTL(k)
@@ -78,6 +87,7 @@ func main() {
 func init() {
 	rootCmd.PersistentFlags().StringArrayVarP(&options.SourceAddress, "source-address", "", []string{}, "source addresses")
 	rootCmd.PersistentFlags().StringVarP(&options.SourcePassword, "source-password", "", "", "source password")
+	rootCmd.PersistentFlags().StringVarP(&options.Keys, "source-key", "", "*", "source keys")
 
 	rootCmd.PersistentFlags().StringVarP(&options.DestinationAddress, "dest-address", "", "", "destination addresses")
 	rootCmd.PersistentFlags().StringVarP(&options.DestinationPassword, "dest-password", "", "", "destination password")
